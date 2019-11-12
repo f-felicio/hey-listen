@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Hey Listen",
+    "slug": "hey-listen",
+    "privacy": "public",
+    "sdkVersion": "35.0.0",
+    "android": {
+      "package": "com.ffelicio.listen"
+    },
+    "platforms": ["ios", "android"],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#201229"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ffelicio.listen"
+    }
+  }
+}
