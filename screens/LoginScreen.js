@@ -1,117 +1,78 @@
-import React from "react";
-import {
-  TouchableOpacity,
-  StatusBar,
-  ImageBackground,
-  ScrollView
-} from "react-native";
+import React, { useState, useEffect } from "react";
+import { StatusBar, ImageBackground, ScrollView } from "react-native";
 import styled from "styled-components";
 import { Ionicons } from "@expo/vector-icons";
+import { db } from "../services/firebase";
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+export default function LoginScreen({ navigation }) {
+  StatusBar.setBarStyle("light-content", true);
+  const [usersList, setUsersList] = useState([]);
 
-class LoginScreen extends React.Component {
-  static navigationOptions = {
-    header: null
-  };
+  useEffect(() => {
+    async function loadUsers() {
+      const usersRef = await db.collection("users").get();
+      const snapData = usersRef.docs.map(doc => doc.data());
+      setUsersList(snapData);
+    }
+    loadUsers();
+  }, []);
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      usersList: []
-    };
-  }
-
-  init() {
-    const db = firebase.firestore();
-    var collectionReference = db.collection("users");
-    var getList = [];
-    collectionReference
-      .orderBy("name")
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          getList.push(doc.data());
-          this.setState({ usersList: getList });
-        });
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
-
-  componentDidMount() {
-    StatusBar.setBarStyle("light-content", true);
-    const firebaseConfig = {
-      apiKey: "AIzaSyAiWnjeijhlHMEKKrR0KHmTefjHBZWzu0I",
-      authDomain: "teste-1987.firebaseapp.com",
-      databaseURL: "https://teste-1987.firebaseio.com",
-      storageBucket: "teste-1987.appspot.com",
-      projectId: "teste-1987"
-    };
-    firebase.initializeApp(firebaseConfig);
-    this.init();
-  }
-  render() {
-    return (
-      <ImageBackground
-        source={require("../assets/bg-login.jpg")}
-        style={{ width: "100%", height: "100%" }}
-      >
-        <Container>
-          <TextView>
-            <Title>Request a playlist</Title>
-            <Subtitle>Receive worldwide music suggestions</Subtitle>
-          </TextView>
-          <ChooseView>
-            <Span> Choose one </Span>
-            <ScrollView
-              horizontal={true}
-              showsHorizontalScrollIndicator={false}
-              style={{
-                alignItems: "center",
-                paddingBottom: 10
-              }}
-            >
-              {this.state.usersList.map(user => (
-                <TouchableOpacity
-                  onPress={() => {
-                    this.props.navigation.navigate("Home", {
-                      user: user
-                    });
-                  }}
-                >
-                  <User>
-                    <UserPhoto source={{ uri: user.user_pic }} />
-                  </User>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </ChooseView>
-          <BtnView>
-            <Span> Soon </Span>
-            <BtnSocial>
-              <BtnGoogle>
-                <LogoGoogle
-                  source={require("../assets/logo-google.png")}
-                  resizeMode="contain"
-                />
-                <BtnTxtDark> Google </BtnTxtDark>
-              </BtnGoogle>
-              <BtnFacebook>
-                <Ionicons name="logo-facebook" size={24} color="#fff" />
-                <BtnTxt> Facebook </BtnTxt>
-              </BtnFacebook>
-            </BtnSocial>
-          </BtnView>
-        </Container>
-      </ImageBackground>
-    );
-  }
+  return (
+    <ImageBackground
+      source={require("../assets/bg-login.jpg")}
+      style={{ width: "100%", height: "100%" }}
+    >
+      <Container>
+        <TextView>
+          <Title>Request a playlist</Title>
+          <Subtitle>Receive worldwide music suggestions</Subtitle>
+        </TextView>
+        <ChooseView>
+          <Span> Choose one </Span>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={false}
+            style={{
+              alignItems: "center",
+              paddingBottom: 10
+            }}
+          >
+            {usersList.map(user => (
+              <User
+                onPress={() => {
+                  navigation.navigate("Home", {
+                    user: user
+                  });
+                }}
+              >
+                <UserPhoto source={{ uri: user.user_pic }} />
+              </User>
+            ))}
+          </ScrollView>
+        </ChooseView>
+        <BtnView>
+          <Span> Soon </Span>
+          <BtnSocial>
+            <BtnGoogle>
+              <LogoGoogle
+                source={require("../assets/logo-google.png")}
+                resizeMode="contain"
+              />
+              <BtnTxtDark> Google </BtnTxtDark>
+            </BtnGoogle>
+            <BtnFacebook>
+              <Ionicons name="logo-facebook" size={24} color="#fff" />
+              <BtnTxt> Facebook </BtnTxt>
+            </BtnFacebook>
+          </BtnSocial>
+        </BtnView>
+      </Container>
+    </ImageBackground>
+  );
 }
-
-export default LoginScreen;
+LoginScreen.navigationOptions = {
+  header: null
+};
 
 const Container = styled.View`
   flex: 1;
@@ -209,7 +170,7 @@ const BtnEmail = styled.View`
   margin-top: 30px;
 `;
 
-const User = styled.View`
+const User = styled.TouchableOpacity`
   width: 80px;
   height: 80px;
   margin: 5px 2px;

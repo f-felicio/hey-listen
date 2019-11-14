@@ -1,98 +1,80 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { ScrollView, TouchableOpacity } from "react-native";
+import { db } from "../services/firebase";
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+export default function DetailsScreen({ navigation }) {
+  const playlist = navigation.getParam("List");
+  const [playlistDetail, setPlaylistDetail] = useState([]);
 
-class DetailsScreen extends React.Component {
-  static navigationOptions = {
-    header: null
-  };
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      playlist: []
-    };
-  }
-
-  componentDidMount() {
-    this.init();
-  }
-
-  init() {
-    const db = firebase.firestore();
-    var collectionReference = db.collection("recommends");
-    var getList = [];
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    collectionReference
-      .where("request_id", "==", playlist.uid)
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          getList.push(doc.data());
-          this.setState({ playlist: getList });
+  useEffect(() => {
+    function loadRequests() {
+      var collectionReference = db.collection("recommends");
+      var getList = [];
+      collectionReference
+        .where("request_id", "==", playlist.uid)
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            getList.push(doc.data());
+          });
+          setPlaylistDetail(getList);
+        })
+        .catch(err => {
+          console.log("Error getting documents", err);
         });
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
+    }
+    loadRequests();
+  }, []);
 
-  render() {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    return (
-      <ScrollView style={{ height: "100%", flex: 1 }}>
-        <Header>
-          <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
-          <BackArea>
-            <TouchableOpacity
-              onPress={() => {
-                this.props.navigation.navigate("Home");
-              }}
-            >
-              <BtnBack>
-                <TxtBack>{"X"}</TxtBack>
-              </BtnBack>
-            </TouchableOpacity>
-          </BackArea>
-          <ListName>{playlist.name}</ListName>
-          <Span>Creator</Span>
-          <Avatar source={{ uri: playlist.user_pic }} />
-          <ListUser>{playlist.user}</ListUser>
-          <TagView>
-            {playlist.tags.map(tag => (
-              <Tag>
-                <TagText>{tag}</TagText>
-              </Tag>
-            ))}
-          </TagView>
-        </Header>
+  return (
+    <ScrollView style={{ height: "100%", flex: 1 }}>
+      <Header>
+        <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
+        <BackArea>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Home");
+            }}
+          >
+            <BtnBack>
+              <TxtBack>{"X"}</TxtBack>
+            </BtnBack>
+          </TouchableOpacity>
+        </BackArea>
+        <ListName>{playlist.name}</ListName>
+        <Span>Creator</Span>
+        <Avatar source={{ uri: playlist.user_pic }} />
+        <ListUser>{playlist.user}</ListUser>
+        <TagView>
+          {playlist.tags.map(tag => (
+            <Tag>
+              <TagText>{tag}</TagText>
+            </Tag>
+          ))}
+        </TagView>
+      </Header>
 
-        <ListContainer>
-          {this.state.playlist.map(
-            music =>
-              music.added && (
-                <Row>
-                  <Art source={{ uri: music.art }} />
-                  <Info>
-                    <Title>{music.title}</Title>
-                    <Artist>{music.artist}</Artist>
-                  </Info>
-                </Row>
-              )
-          )}
-        </ListContainer>
-      </ScrollView>
-    );
-  }
+      <ListContainer>
+        {playlistDetail.map(
+          music =>
+            music.added && (
+              <Row>
+                <Art source={{ uri: music.art }} />
+                <Info>
+                  <Title>{music.title}</Title>
+                  <Artist>{music.artist}</Artist>
+                </Info>
+              </Row>
+            )
+        )}
+      </ListContainer>
+    </ScrollView>
+  );
 }
-
-export default DetailsScreen;
-
+DetailsScreen.navigationOptions = {
+  header: null
+};
 const Header = styled.View`
   height: 350px;
   align-items: center;

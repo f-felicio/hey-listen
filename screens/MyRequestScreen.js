@@ -1,286 +1,249 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import {
-  StatusBar,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  TouchableHighlight,
-  Switch
-} from "react-native";
+import { db } from "../services/firebase";
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+import { ScrollView, TouchableOpacity, Modal, Switch } from "react-native";
 
-class MyRequestScreen extends React.Component {
-  static navigationOptions = {
-    header: null
-  };
+export default function MyRequestScreen({ navigation }) {
+  const [modal, setModal] = useState(false);
+  const [music, setMusic] = useState({});
+  const [recommendedList, setRecommendedList] = useState([]);
+  const [qtd, setQtd] = useState(0);
+  const [shared, setShared] = useState(false);
+  const playlist = navigation.getParam("List");
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      modalVisible: false,
-      music: {},
-      recommendedList: [],
-      qtd: 0
-    };
-    this.add = this.add.bind(this);
-  }
-
-  setModalVisible(visible, music) {
-    this.setState({ modalVisible: visible, music });
-  }
-
-  componentDidMount() {
-    this.init();
-  }
-
-  init() {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    const db = firebase.firestore();
-    var collectionReference = db.collection("recommends");
-    var getList = [];
-    collectionReference
-      .where("request_id", "==", playlist.uid)
-      .get()
-      .then(snapshot => {
-        var i = 0;
-        snapshot.forEach(doc => {
-          var item = Object.assign({ uid: doc.id }, doc.data());
-          getList.push(item);
-          item.added ? i++ : "";
-          this.setState({ recommendedList: getList, qtd: +i });
+  useEffect(() => {
+    function loadRequests() {
+      var collectionReference = db.collection("recommends");
+      var getList = [];
+      collectionReference
+        .where("request_id", "==", playlist.uid)
+        .get()
+        .then(snapshot => {
+          var i = 0;
+          snapshot.forEach(doc => {
+            const item = Object.assign({ uid: doc.id }, doc.data());
+            getList.push(item);
+            item.added ? i++ : "";
+            setQtd(+i);
+          });
+          setRecommendedList(getList);
+        })
+        .catch(err => {
+          console.log("Error getting documents", err);
         });
-        this.setState({ shared: playlist.shared });
-      })
+      setShared(playlist.shared);
+    }
+    loadRequests();
+  }, [modal]);
 
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
-
-  add(music) {
-    const db = firebase.firestore();
+  add = music => {
     db.collection("recommends")
       .doc(music.uid)
       .update({
         added: true
       })
       .then(() => {
-        this.setState({ modalVisible: false, qtd: +1 }), this.init();
+        setModal(false);
+        setQtd(+1);
       });
-  }
-  skip(music) {
-    const db = firebase.firestore();
+  };
+  skip = music => {
     db.collection("recommends")
       .doc(music.uid)
       .update({
         skipped: true
       })
       .then(() => {
-        this.setState({ modalVisible: false }), this.init();
+        setModal(false);
       });
-  }
+  };
 
-  toggleSwitch() {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    const db = firebase.firestore();
+  toggleSwitch = () => {
     db.collection("requests")
       .doc(playlist.uid)
       .update({
-        shared: !this.state.shared
+        shared: !shared
       })
       .then(() => {
-        this.setState({ shared: !this.state.shared });
+        setShared(!shared);
       });
-  }
+  };
 
-  closeModal() {
-    this.setState({ modalVisible: false });
-  }
-  render() {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    return (
-      <ScrollView style={{ height: "100%", flex: 1 }}>
-        <Modal
-          animationType="slide"
-          transparent
-          visible={this.state.modalVisible}
-          onRequestClose={() => {
-            this.setState({ music: {} });
-          }}
-        >
-          <ModalContainer>
-            <ModalHeader>
-              <ModalHeaderCover
-                source={require("../assets/bg-recommended.jpg")}
-                size="cover"
-              />
-              <CloseArea>
-                <TouchableOpacity
-                  onPress={() => {
-                    this.closeModal();
-                  }}
-                >
-                  <BtnBack>
-                    <TxtBack>{"X"}</TxtBack>
-                  </BtnBack>
-                </TouchableOpacity>
-              </CloseArea>
-              <ModalSpan>Recommended by</ModalSpan>
-              <ModalAvatar source={{ uri: this.state.music.user_pic }} />
-              <ModalUser>{this.state.music.user}</ModalUser>
-            </ModalHeader>
-
-            <ModalBody style={{ flex: 1 }}>
-              <ScrollView
-                style={{
-                  background: "#f7f7f7",
-                  borderWidth: 1,
-                  borderColor: "#000"
+  return (
+    <ScrollView style={{ height: "100%", flex: 1 }}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={modal}
+        onRequestClose={() => {
+          setMusic({});
+        }}
+      >
+        <ModalContainer>
+          <ModalHeader>
+            <ModalHeaderCover
+              source={require("../assets/bg-recommended.jpg")}
+              size="cover"
+            />
+            <CloseArea>
+              <TouchableOpacity
+                onPress={() => {
+                  setModal(false);
                 }}
               >
-                <ModalContent>
-                  <ModalCover>
-                    <ModalArt source={{ uri: this.state.music.art }} />
-                  </ModalCover>
-                  <Title>{this.state.music.title}</Title>
-                  <Artist>{this.state.music.artist}</Artist>
+                <BtnBack>
+                  <TxtBack>{"X"}</TxtBack>
+                </BtnBack>
+              </TouchableOpacity>
+            </CloseArea>
+            <ModalSpan>Recommended by</ModalSpan>
+            <ModalAvatar source={{ uri: music.user_pic }} />
+            <ModalUser>{music.user}</ModalUser>
+          </ModalHeader>
 
-                  <Span>Listen in: {"(Soon)"}</Span>
-                  <ListenContainer>
-                    <ListenIcon
-                      source={{
-                        uri:
-                          "http://www.sccpre.cat/png/big/40/401161_spotify-png-logo.jpg"
-                      }}
-                    />
-                    <ListenIcon
-                      source={{
-                        uri:
-                          "http://www.vectorico.com/download/social_media/youtube-red-square.png"
-                      }}
-                    />
-                  </ListenContainer>
-
-                  <BtnsContainer>
-                    <TouchableOpacity
-                      onPress={() => {
-                        this.skip(this.state.music);
-                      }}
-                    >
-                      <BtnSkip>
-                        <BtnTxt2>Skip</BtnTxt2>
-                      </BtnSkip>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        this.add(this.state.music);
-                      }}
-                    >
-                      <BtnAdd>
-                        <BtnTxt>Add</BtnTxt>
-                      </BtnAdd>
-                    </TouchableOpacity>
-                  </BtnsContainer>
-                </ModalContent>
-              </ScrollView>
-            </ModalBody>
-          </ModalContainer>
-        </Modal>
-
-        <Header>
-          <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
-          <BackArea>
-            <TouchableOpacity
-              onPress={() => {
-                this.props.navigation.navigate("Home");
+          <ModalBody style={{ flex: 1 }}>
+            <ScrollView
+              style={{
+                background: "#f7f7f7",
+                borderWidth: 1,
+                borderColor: "#000"
               }}
             >
-              <BtnBack>
-                <TxtBack>{"X"}</TxtBack>
-              </BtnBack>
-            </TouchableOpacity>
-          </BackArea>
-          <ListName>{playlist.name}</ListName>
-          <Count>{this.state.qtd}/10</Count>
-          <TagView>
-            {playlist.tags.map(tag => (
-              <Tag>
-                <TagText>{tag}</TagText>
-              </Tag>
-            ))}
-          </TagView>
-          <ContainerSwitch>
-            <TextSwitch> Public </TextSwitch>
-            <Switch
-              onValueChange={() => {
-                this.toggleSwitch();
-              }}
-              value={this.state.shared}
-            />
-          </ContainerSwitch>
-        </Header>
+              <ModalContent>
+                <ModalCover>
+                  <ModalArt source={{ uri: music.art }} />
+                </ModalCover>
+                <Title>{music.title}</Title>
+                <Artist>{music.artist}</Artist>
 
-        <RecommendedContainer>
-          <SectionTitle> Hey Listen </SectionTitle>
-          {this.state.recommendedList.length < 1 && (
-            <TextEmpty> No recommendations yet </TextEmpty>
-          )}
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              paddingTop: 10,
-              alignItems: "center",
-              paddingBottom: 10
-            }}
-          >
-            {this.state.recommendedList.map(
-              music =>
-                !music.added &&
-                !music.skipped && (
+                <Span>Listen in: {"(Soon)"}</Span>
+                <ListenContainer>
+                  <ListenIcon
+                    source={{
+                      uri:
+                        "http://www.sccpre.cat/png/big/40/401161_spotify-png-logo.jpg"
+                    }}
+                  />
+                  <ListenIcon
+                    source={{
+                      uri:
+                        "http://www.vectorico.com/download/social_media/youtube-red-square.png"
+                    }}
+                  />
+                </ListenContainer>
+
+                <BtnsContainer>
                   <TouchableOpacity
                     onPress={() => {
-                      this.setModalVisible(true, music);
+                      skip(music);
                     }}
                   >
-                    <Recommended>
-                      <ArtBig source={{ uri: music.art }} />
-                      <TitleRecommended>{music.title}</TitleRecommended>
-                      <ArtistRecommended>{music.artist}</ArtistRecommended>
-                    </Recommended>
+                    <BtnSkip>
+                      <BtnTxt2>Skip</BtnTxt2>
+                    </BtnSkip>
                   </TouchableOpacity>
-                )
-            )}
-          </ScrollView>
-        </RecommendedContainer>
+                  <TouchableOpacity
+                    onPress={() => {
+                      add(music);
+                    }}
+                  >
+                    <BtnAdd>
+                      <BtnTxt>Add</BtnTxt>
+                    </BtnAdd>
+                  </TouchableOpacity>
+                </BtnsContainer>
+              </ModalContent>
+            </ScrollView>
+          </ModalBody>
+        </ModalContainer>
+      </Modal>
 
-        <SectionTitle2> Songs Added </SectionTitle2>
-        <ListContainer>
-          {this.state.recommendedList.map(
+      <Header>
+        <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
+        <BackArea>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Home");
+            }}
+          >
+            <BtnBack>
+              <TxtBack>{"X"}</TxtBack>
+            </BtnBack>
+          </TouchableOpacity>
+        </BackArea>
+        <ListName>{playlist.name}</ListName>
+        <Count>{qtd}/10</Count>
+        <TagView>
+          {playlist.tags.map(tag => (
+            <Tag>
+              <TagText>{tag}</TagText>
+            </Tag>
+          ))}
+        </TagView>
+        <ContainerSwitch>
+          <TextSwitch> Public </TextSwitch>
+          <Switch onValueChange={toggleSwitch} value={shared} />
+        </ContainerSwitch>
+      </Header>
+
+      <RecommendedContainer>
+        <SectionTitle> Hey Listen </SectionTitle>
+        {recommendedList.length < 1 && (
+          <TextEmpty> No recommendations yet </TextEmpty>
+        )}
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            paddingTop: 10,
+            alignItems: "center",
+            paddingBottom: 10
+          }}
+        >
+          {recommendedList.map(
             music =>
-              music.added && (
-                <Row>
-                  <Art source={{ uri: music.art }} />
-                  <Info>
-                    <Title>{music.title}</Title>
-                    <Artist>{music.artist}</Artist>
-                  </Info>
-                </Row>
+              !music.added &&
+              !music.skipped && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setModal(true);
+                    setMusic(music);
+                  }}
+                >
+                  <Recommended>
+                    <ArtBig source={{ uri: music.art }} />
+                    <TitleRecommended>{music.title}</TitleRecommended>
+                    <ArtistRecommended>{music.artist}</ArtistRecommended>
+                  </Recommended>
+                </TouchableOpacity>
               )
           )}
-        </ListContainer>
-      </ScrollView>
-    );
-  }
+        </ScrollView>
+      </RecommendedContainer>
+
+      <SectionTitle2> Songs Added </SectionTitle2>
+      <ListContainer>
+        {recommendedList.map(
+          music =>
+            music.added && (
+              <Row>
+                <Art source={{ uri: music.art }} />
+                <Info>
+                  <Title>{music.title}</Title>
+                  <Artist>{music.artist}</Artist>
+                </Info>
+              </Row>
+            )
+        )}
+      </ListContainer>
+    </ScrollView>
+  );
 }
 
-export default MyRequestScreen;
+MyRequestScreen.navigationOptions = {
+  header: null
+};
 
 const ModalContainer = styled.View`
   border-top-left-radius: 20px;

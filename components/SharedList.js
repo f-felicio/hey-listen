@@ -1,84 +1,69 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, TouchableOpacity } from "react-native";
 import styled from "styled-components";
 
-import { NavigationEvents } from "react-navigation";
+import { db } from "../services/firebase";
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+export default function SharedList({ navigation }) {
+  const [sharedList, setSharedList] = useState([]);
 
-class SharedList extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      sharedList: []
-    };
-  }
-
-  componentDidMount() {
-    this.init();
-  }
-
-  init() {
-    const db = firebase.firestore();
-    var collectionReference = db.collection("requests");
-    var getList = [];
-    collectionReference
-      .where("shared", "==", true)
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          var item = Object.assign({ uid: doc.id }, doc.data());
-          getList.push(item);
-          this.setState({ sharedList: getList });
+  useEffect(() => {
+    function loadRequests() {
+      var collectionReference = db.collection("requests");
+      var getList = [];
+      collectionReference
+        .where("shared", "==", true)
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            const item = Object.assign({ uid: doc.id }, doc.data());
+            getList.push(item);
+          });
+          setSharedList(getList);
+        })
+        .catch(err => {
+          console.log("Error getting documents", err);
         });
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
+    }
+    loadRequests();
+  }, []);
 
-  render() {
-    return (
-      <>
-        <NavigationEvents onDidFocus={() => this.init()} />
-        <SectionTitle>Shared Lists</SectionTitle>
-        <Container>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              alignItems: "center"
-            }}
-          >
-            {this.state.sharedList.map((list, index) => (
-              <TouchableOpacity
-                key={index}
-                onPress={() => {
-                  this.props.navigation.push("Details", {
-                    List: list
-                  });
-                }}
-              >
-                <Card>
-                  <Image
-                    source={require("../assets/bg-shared.jpg")}
-                    size="cover"
-                  />
-                  <Avatar source={{ uri: list.user_pic }} />
-                  <CardName>{list.name}</CardName>
-                  <CardTags>{list.tags.map(tag => tag + " ")} </CardTags>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Container>
-      </>
-    );
-  }
+  return (
+    <>
+      <SectionTitle>Shared Lists</SectionTitle>
+      <Container>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            alignItems: "center"
+          }}
+        >
+          {sharedList.map((list, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => {
+                navigation.navigate("Details", {
+                  List: list
+                });
+              }}
+            >
+              <Card>
+                <Image
+                  source={require("../assets/bg-shared.jpg")}
+                  size="cover"
+                />
+                <Avatar source={{ uri: list.user_pic }} />
+                <CardName>{list.name}</CardName>
+                <CardTags>{list.tags.map(tag => tag + " ")} </CardTags>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Container>
+    </>
+  );
 }
-
-export default SharedList;
 
 const SectionTitle = styled.Text`
   color: #fff;

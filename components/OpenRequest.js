@@ -1,82 +1,68 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, TouchableOpacity } from "react-native";
 import styled from "styled-components";
 
 import { NavigationEvents } from "react-navigation";
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+import { db } from "../services/firebase";
 
-class OpenRequest extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      RequestList: []
-    };
-  }
+export default function OpenRequest({ navigation, user }) {
+  const [requestList, setRequestList] = useState([]);
 
-  componentDidMount() {
-    this.init();
-  }
-
-  init() {
-    const db = firebase.firestore();
-    var collectionReference = db.collection("requests");
-    var getList = [];
-    collectionReference
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          var item = Object.assign({ uid: doc.id }, doc.data());
-          getList.push(item);
-          this.setState({ RequestList: getList });
+  useEffect(() => {
+    function loadRequests() {
+      var collectionReference = db.collection("requests");
+      var getList = [];
+      collectionReference
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            const item = Object.assign({ uid: doc.id }, doc.data());
+            getList.push(item);
+          });
+          setRequestList(getList);
+        })
+        .catch(err => {
+          console.log("Error getting documents", err);
         });
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
+    }
+    loadRequests();
+  }, []);
 
-  render() {
-    const user_ = this.props.user;
-    return (
-      <>
-        <NavigationEvents onDidFocus={() => this.init()} />
-        <SectionTitle> Let's help them </SectionTitle>
-        <Container>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              paddingBottom: 10,
-              alignItems: "center"
-            }}
-          >
-            {this.state.RequestList.map(
-              request =>
-                request.user != user_.name && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      this.props.navigation.push("OpenRequest", {
-                        List: request,
-                        User: user_
-                      });
-                    }}
-                  >
-                    <User>
-                      <UserPhoto source={{ uri: request.user_pic }} />
-                    </User>
-                  </TouchableOpacity>
-                )
-            )}
-          </ScrollView>
-        </Container>
-      </>
-    );
-  }
+  return (
+    <>
+      <SectionTitle> Let's help them </SectionTitle>
+      <Container>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            paddingBottom: 10,
+            alignItems: "center"
+          }}
+        >
+          {requestList.map(
+            request =>
+              request.user != user.name && (
+                <TouchableOpacity
+                  onPress={() => {
+                    navigation.navigate("OpenRequest", {
+                      List: request,
+                      User: user
+                    });
+                  }}
+                >
+                  <User>
+                    <UserPhoto source={{ uri: request.user_pic }} />
+                  </User>
+                </TouchableOpacity>
+              )
+          )}
+        </ScrollView>
+      </Container>
+    </>
+  );
 }
-
-export default OpenRequest;
 
 const SectionTitle = styled.Text`
   color: #fff;

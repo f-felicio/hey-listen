@@ -1,200 +1,159 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { StatusBar, ScrollView, TouchableOpacity } from "react-native";
+import { ScrollView, TouchableOpacity } from "react-native";
 import { Genres, Decades, Moods } from "../db";
-import * as firebase from "firebase";
-import "@firebase/firestore";
+import { db } from "../services/firebase";
 
-class NewRequestScreen extends React.Component {
-  static navigationOptions = {
-    header: null
-  };
+export default function NewRequestScreen({ navigation }) {
+  const user = navigation.getParam("user");
+  const [request, setRequest] = useState({ name: "", tags: [] });
+  const [genre, setGenre] = useState("");
+  const [mood, setMood] = useState("");
+  const [decade, setDecade] = useState("");
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      request: {
-        name: "",
-        tags: []
-      },
-      genre: "",
-      mood: "",
-      decade: ""
-    };
-  }
-
-  componentDidMount() {
-    const { navigation } = this.props;
-    const user_ = navigation.getParam("user");
-    this.setState({
-      user: user_.name,
-      user_pic: user_.user_pic
-    });
-  }
-
-  add() {
-    var tags = [this.state.genre, this.state.mood, this.state.decade];
-    var request = {
-      name: this.state.request.name,
-      user: this.state.user,
-      user_pic: this.state.user_pic,
+  add = () => {
+    const tags = [genre, mood, decade];
+    const requested = {
+      name: request.name,
+      user: user.name,
+      userpic: user.user_pic,
       tags: tags
     };
-    const db = firebase.firestore();
+
     db.collection("requests")
-      .add(request)
+      .add(requested)
       .then(docRef => {
         console.log("Document written with ID: ", docRef.id);
       })
       .then(() => {
-        this.props.navigation.navigate("Home");
+        navigation.navigate("Home");
       })
       .catch(function(error) {
         console.error("Error adding document: ", error);
       });
-  }
+  };
 
-  render() {
-    return (
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <Container>
-          <BackArea>
+  return (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <Container>
+        <BackArea>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Home");
+            }}
+          >
+            <BtnBack>
+              <TxtBack>{"X"}</TxtBack>
+            </BtnBack>
+          </TouchableOpacity>
+        </BackArea>
+        <LabelForm>Name</LabelForm>
+        <InputForm
+          onChangeText={name => setRequest({ ...request, name })}
+          value={request.name}
+        />
+        {(genre != "" || decade != "" || mood != "") && (
+          <Tags>
+            <Tag> {genre} </Tag>
+            <Tag> {decade} </Tag>
+            <Tag> {mood} </Tag>
+          </Tags>
+        )}
+        {genre != "" && decade != "" && mood != "" && request.name != "" && (
+          <TouchableOpacity onPress={add}>
+            <BtnAdd>
+              <BtnTxt>Finish</BtnTxt>
+            </BtnAdd>
+          </TouchableOpacity>
+        )}
+        {(genre == "" || decade == "" || mood == "" || request.name == "") && (
+          <BtnAddDisabled>
+            <BtnTxt>Finish</BtnTxt>
+          </BtnAddDisabled>
+        )}
+        <LabelForm>Genre</LabelForm>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            alignItems: "center",
+            paddingBottom: 10
+          }}
+        >
+          {Genres.map(genre => (
             <TouchableOpacity
               onPress={() => {
-                this.props.navigation.navigate("Home");
+                setGenre(genre);
               }}
             >
-              <BtnBack>
-                <TxtBack>{"X"}</TxtBack>
-              </BtnBack>
+              <Card>
+                <Image
+                  source={require("../assets/bg-shared.jpg")}
+                  size="cover"
+                />
+                <CardText> {genre} </CardText>
+              </Card>
             </TouchableOpacity>
-          </BackArea>
-          <LabelForm>Name</LabelForm>
-          <InputForm
-            onChangeText={name =>
-              this.setState({
-                request: {
-                  ...this.state.request,
-                  name
-                }
-              })
-            }
-            value={this.state.request.name}
-          />
-          {(this.state.genre != "" ||
-            this.state.decade != "" ||
-            this.state.mood != "") && (
-            <Tags>
-              <Tag> {this.state.genre} </Tag>
-              <Tag> {this.state.decade} </Tag>
-              <Tag> {this.state.mood} </Tag>
-            </Tags>
-          )}
-          {this.state.genre != "" &&
-            this.state.decade != "" &&
-            this.state.mood != "" &&
-            this.state.request.name != "" && (
-              <TouchableOpacity
-                onPress={() => {
-                  this.add();
-                }}
-              >
-                <BtnAdd>
-                  <BtnTxt>Finish</BtnTxt>
-                </BtnAdd>
-              </TouchableOpacity>
-            )}
-          {(this.state.genre == "" ||
-            this.state.decade == "" ||
-            this.state.mood == "" ||
-            this.state.request.name == "") && (
-            <BtnAddDisabled>
-              <BtnTxt>Finish</BtnTxt>
-            </BtnAddDisabled>
-          )}
-          <LabelForm>Genre</LabelForm>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              alignItems: "center",
-              paddingBottom: 10
-            }}
-          >
-            {Genres.map(genre => (
-              <TouchableOpacity
-                onPress={() => {
-                  this.setState({ genre });
-                }}
-              >
-                <Card>
-                  <Image
-                    source={require("../assets/bg-shared.jpg")}
-                    size="cover"
-                  />
-                  <CardText> {genre} </CardText>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <LabelForm>Decade</LabelForm>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              alignItems: "center",
-              paddingBottom: 10
-            }}
-          >
-            {Decades.map(decade => (
-              <TouchableOpacity
-                onPress={() => {
-                  this.setState({ decade });
-                }}
-              >
-                <Card>
-                  <Image
-                    source={require("../assets/bg-my-request.jpg")}
-                    size="cover"
-                  />
-                  <CardText> {decade} </CardText>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <LabelForm>Mood</LabelForm>
-          <ScrollView
-            horizontal={true}
-            showsHorizontalScrollIndicator={false}
-            style={{
-              alignItems: "center",
-              paddingBottom: 10
-            }}
-          >
-            {Moods.map(mood => (
-              <TouchableOpacity
-                onPress={() => {
-                  this.setState({ mood });
-                }}
-              >
-                <Card>
-                  <Image
-                    source={require("../assets/bg-recommended.jpg")}
-                    size="cover"
-                  />
-                  <CardText> {mood} </CardText>
-                </Card>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Container>
-      </ScrollView>
-    );
-  }
+          ))}
+        </ScrollView>
+        <LabelForm>Decade</LabelForm>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            alignItems: "center",
+            paddingBottom: 10
+          }}
+        >
+          {Decades.map(decade => (
+            <TouchableOpacity
+              onPress={() => {
+                setDecade(decade);
+              }}
+            >
+              <Card>
+                <Image
+                  source={require("../assets/bg-my-request.jpg")}
+                  size="cover"
+                />
+                <CardText> {decade} </CardText>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <LabelForm>Mood</LabelForm>
+        <ScrollView
+          horizontal={true}
+          showsHorizontalScrollIndicator={false}
+          style={{
+            alignItems: "center",
+            paddingBottom: 10
+          }}
+        >
+          {Moods.map(mood => (
+            <TouchableOpacity
+              onPress={() => {
+                setMood(mood);
+              }}
+            >
+              <Card>
+                <Image
+                  source={require("../assets/bg-recommended.jpg")}
+                  size="cover"
+                />
+                <CardText> {mood} </CardText>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </Container>
+    </ScrollView>
+  );
 }
 
-export default NewRequestScreen;
-
+NewRequestScreen.navigationOptions = {
+  header: null
+};
 const Container = styled.View`
   flex: 1;
   background: #252c48;

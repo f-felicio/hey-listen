@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import {
   StatusBar,
@@ -8,33 +8,21 @@ import {
   TouchableHighlight,
   View
 } from "react-native";
+import { db } from "../services/firebase";
+export default function OpenRequestScreen({ navigation }) {
+  const playlist = navigation.getParam("List");
+  const user = navigation.getParam("User");
 
-import * as firebase from "firebase";
-import "@firebase/firestore";
+  const [modal, setModal] = useState(false);
+  const [recommended, setRecommended] = useState(null);
+  const [data, setData] = useState([]);
+  const [playlistUpdate, setPlaylistUpdate] = useState([]);
 
-class OpenRequestScreen extends React.Component {
-  static navigationOptions = {
-    header: null
+  resetModal = () => {
+    setModal(false);
+    setRecommended(null);
+    setData([]);
   };
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      modalVisible: false,
-      recommended: null,
-      data: [],
-      arrayHolder: [],
-      playlist: []
-    };
-  }
-
-  resetModal() {
-    this.setState({
-      modalVisible: false,
-      recommended: null,
-      data: []
-    });
-  }
 
   searchFilterFunction = text => {
     if (text.length > 2) {
@@ -47,46 +35,38 @@ class OpenRequestScreen extends React.Component {
       })
         .then(response => response.json())
         .then(responseJson => {
-          this.setState({ data: responseJson.data });
+          setData(responseJson.data);
         })
         .catch(error => {
           console.error(error);
         });
     } else {
-      this.setState({ data: [] });
+      setData([]);
     }
   };
 
-  componentDidMount() {
-    this.init();
-  }
-
-  init() {
-    var musics_added = [];
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-
-    const db = firebase.firestore();
-    db.collection("recommends")
-      .where("request_id", "==", playlist.uid)
-      .get()
-      .then(snapshot => {
-        snapshot.forEach(doc => {
-          musics_added.push(doc.data());
-          this.setState({ playlist: musics_added });
+  useEffect(() => {
+    function loadRequests() {
+      const collectionReference = db.collection("recommends");
+      const musics_added = [];
+      collectionReference
+        .where("request_id", "==", playlist.uid)
+        .get()
+        .then(snapshot => {
+          snapshot.forEach(doc => {
+            musics_added.push(doc.data());
+          });
+          setPlaylistUpdate(musics_added);
+        })
+        .catch(err => {
+          console.log("Error getting documents", err);
         });
-      })
-      .catch(err => {
-        console.log("Error getting documents", err);
-      });
-  }
+    }
+    loadRequests();
+  }, []);
 
-  add(music) {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    const user = navigation.getParam("User");
-
-    var item = Object.assign({
+  add = music => {
+    const item = Object.assign({
       request_id: playlist.uid,
       added: false,
       skipped: false,
@@ -96,153 +76,141 @@ class OpenRequestScreen extends React.Component {
       title: music.title,
       art: music.album.cover_big
     });
-    const db = firebase.firestore();
 
     db.collection("recommends")
       .add(item)
       .then(docRef => {
-        this.resetModal();
+        resetModal();
         console.log("Document written with ID: ", docRef.id);
       })
       .catch(function(error) {
         console.error("Error adding document: ", error);
       });
-  }
+  };
+  return (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      <Modal
+        animationType="slide"
+        transparent
+        visible={modal}
+        onRequestClose={() => {
+          setMusic({});
+        }}
+      >
+        <ModalContainer>
+          <ModalBody>
+            <CloseArea>
+              <TouchableOpacity onPress={resetModal}>
+                <BtnClose>
+                  <TxtBack>{"X"}</TxtBack>
+                </BtnClose>
+              </TouchableOpacity>
+            </CloseArea>
+            <LabelForm>Song:</LabelForm>
+            <InputForm
+              onChangeText={text => searchFilterFunction(text)}
+              autoCorrect={false}
+            />
+            {!recommended && (
+              <BtnAddContainer>
+                <BtnAddDisabled>
+                  <BtnTxt>Add Music</BtnTxt>
+                </BtnAddDisabled>
+              </BtnAddContainer>
+            )}
+            {recommended && (
+              <TouchableOpacity
+                onPress={() => {
+                  add(recommended);
+                }}
+              >
+                <BtnAdd>
+                  <BtnTxt>Add Music</BtnTxt>
+                </BtnAdd>
+              </TouchableOpacity>
+            )}
+            <LabelForm>Results:</LabelForm>
+            <Results style={{ flex: 1 }}>
+              <ScrollView>
+                <ModalContent>
+                  {data.length > 0 &&
+                    data.map(item => (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setRecommended(item);
+                        }}
+                      >
+                        <Row>
+                          <Art source={{ uri: item.album.cover_big }} />
+                          <Info>
+                            <Title>{item.title}</Title>
+                            <Artist>{item.artist.name}</Artist>
+                          </Info>
+                        </Row>
+                      </TouchableOpacity>
+                    ))}
+                </ModalContent>
+              </ScrollView>
+            </Results>
+          </ModalBody>
+        </ModalContainer>
+      </Modal>
+      <Header>
+        <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
+        <BackArea>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Home");
+            }}
+          >
+            <BtnBack>
+              <TxtBack>{"X"}</TxtBack>
+            </BtnBack>
+          </TouchableOpacity>
+        </BackArea>
+        <ListName>{playlist.name}</ListName>
+        <Span>Looking for:</Span>
+        <TagView>
+          {playlist.tags.map(tag => (
+            <Tag>
+              <TagText>{tag}</TagText>
+            </Tag>
+          ))}
+        </TagView>
+      </Header>
 
-  render() {
-    const { navigation } = this.props;
-    const playlist = navigation.getParam("List");
-    return (
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <Modal
-          animationType="slide"
-          transparent
-          visible={this.state.modalVisible}
-          onRequestClose={() => {
-            this.setState({ music: {} });
-          }}
-        >
-          <ModalContainer>
-            <ModalBody>
-              <CloseArea>
-                <TouchableOpacity
-                  onPress={() => {
-                    this.setState({
-                      modalVisible: false,
-                      recommended: null,
-                      data: []
-                    });
-                  }}
-                >
-                  <BtnClose>
-                    <TxtBack>{"X"}</TxtBack>
-                  </BtnClose>
-                </TouchableOpacity>
-              </CloseArea>
-              <LabelForm>Song:</LabelForm>
-              <InputForm
-                onChangeText={text => this.searchFilterFunction(text)}
-                autoCorrect={false}
-              />
-              {!this.state.recommended && (
-                <BtnAddContainer>
-                  <BtnAddDisabled>
-                    <BtnTxt>Add Music</BtnTxt>
-                  </BtnAddDisabled>
-                </BtnAddContainer>
-              )}
-              {this.state.recommended && (
-                <TouchableOpacity
-                  onPress={() => {
-                    this.add(this.state.recommended);
-                  }}
-                >
-                  <BtnAdd>
-                    <BtnTxt>Add Music</BtnTxt>
-                  </BtnAdd>
-                </TouchableOpacity>
-              )}
-              <LabelForm>Results:</LabelForm>
-              <Results style={{ flex: 1 }}>
-                <ScrollView>
-                  <ModalContent>
-                    {this.state.data.length > 0 &&
-                      this.state.data.map(item => (
-                        <TouchableOpacity
-                          onPress={() => {
-                            this.setState({ recommended: item });
-                          }}
-                        >
-                          <Row>
-                            <Art source={{ uri: item.album.cover_big }} />
-                            <Info>
-                              <Title>{item.title}</Title>
-                              <Artist>{item.artist.name}</Artist>
-                            </Info>
-                          </Row>
-                        </TouchableOpacity>
-                      ))}
-                  </ModalContent>
-                </ScrollView>
-              </Results>
-            </ModalBody>
-          </ModalContainer>
-        </Modal>
-        <Header>
-          <Cover source={require("../assets/bg-shared.jpg")} size="cover" />
-          <BackArea>
-            <TouchableOpacity
-              onPress={() => {
-                this.props.navigation.navigate("Home");
-              }}
-            >
-              <BtnBack>
-                <TxtBack>{"X"}</TxtBack>
-              </BtnBack>
-            </TouchableOpacity>
-          </BackArea>
-          <ListName>{playlist.name}</ListName>
-          <Span>Looking for:</Span>
-          <TagView>
-            {playlist.tags.map(tag => (
-              <Tag>
-                <TagText>{tag}</TagText>
-              </Tag>
-            ))}
-          </TagView>
-        </Header>
+      <TouchableHighlight
+        onPress={() => {
+          setModal(true);
+        }}
+      >
+        <BtnAdd>
+          <BtnTxt>Recommend a song</BtnTxt>
+        </BtnAdd>
+      </TouchableHighlight>
 
-        <TouchableHighlight
-          onPress={() => {
-            this.setState({ modalVisible: true });
-          }}
-        >
-          <BtnAdd>
-            <BtnTxt>Recommend a song</BtnTxt>
-          </BtnAdd>
-        </TouchableHighlight>
-
-        <ListContainer>
-          <SectionTitle>Songs in the list</SectionTitle>
-          {this.state.playlist.map(
-            music =>
-              music.added && (
-                <Row>
-                  <Art source={{ uri: music.art }} />
-                  <Info>
-                    <Title>{music.title}</Title>
-                    <Artist>{music.artist}</Artist>
-                  </Info>
-                </Row>
-              )
-          )}
-        </ListContainer>
-      </ScrollView>
-    );
-  }
+      <ListContainer>
+        <SectionTitle>Songs in the list</SectionTitle>
+        {playlistUpdate.map(
+          music =>
+            music.added && (
+              <Row>
+                <Art source={{ uri: music.art }} />
+                <Info>
+                  <Title>{music.title}</Title>
+                  <Artist>{music.artist}</Artist>
+                </Info>
+              </Row>
+            )
+        )}
+      </ListContainer>
+    </ScrollView>
+  );
 }
 
-export default OpenRequestScreen;
+OpenRequestScreen.navigationOptions = {
+  header: null
+};
 
 const ModalContainer = styled.View`
   margin-top: 50px;
